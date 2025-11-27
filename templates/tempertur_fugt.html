@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bevægelse - Sundhedsapp</title>
+    <title>Temperatur & Fugt - Sundhedsapp</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -16,7 +16,7 @@
             padding: 30px;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            max-width: 800px;
+            max-width: 1000px;
             margin: 0 auto;
         }
         
@@ -39,7 +39,7 @@
         }
         
         th {
-            background-color: #3498db;
+            background-color: #e74c3c;
             color: white;
             font-weight: bold;
         }
@@ -48,18 +48,31 @@
             background-color: #f8f9fa;
         }
         
-        .add-btn {
-            background-color: #27ae60;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-bottom: 20px;
+        .temp-col {
+            color: #e67e22;
+            font-weight: bold;
         }
         
-        .add-btn:hover {
-            background-color: #229954;
+        .humidity-col {
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        .window-open {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .window-closed {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .status-box {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f5e8;
+            border-radius: 5px;
         }
         
         .home-btn {
@@ -76,45 +89,51 @@
         }
         
         .home-btn:hover {
-            background-color: #5e343d;
-            color: rgb(196, 21, 21);
+            background-color: #34495e;
+            color: rgb(241, 18, 18);
             text-decoration: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="/home" class="home-btn">Tilbage</a>
-        <h1>🏃‍♂️ Bevægelse</h1>
+        <a href="/home" class="home-btn"></a>Tilbage</a>
+        <h1>🌡️ Temperatur & Fugt</h1>
         
-        <table id="movementTable">
+        <table id="environmentTable">
             <thead>
                 <tr>
-                    <th>Bevægelse</th>
-                    <th>Dato</th>
+                    <th>📅 Dato</th>
+                    <th>🌡️ Temperatur</th>
+                    <th>💧 Fugt</th>
+                    <th>🪟 Vindue</th>
                 </tr>
             </thead>
             <tbody>
-                {% if movement_data %}
-                    {% for movement in movement_data %}
+                {% if environment_data %}
+                    {% for data in environment_data %}
                     <tr>
-                        <td>{{ movement.type }}</td>
-                        <td>{{ movement.date }}</td>
+                        <td>{{ data.date }}</td>
+                        <td class="temp-col">{{ data.temperature }}°C</td>
+                        <td class="humidity-col">{{ data.humidity }}%</td>
+                        <td class="{% if data.window_status == 'Åben' %}window-open{% else %}window-closed{% endif %}">
+                            {{ data.window_status }}
+                        </td>
                     </tr>
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="2" style="text-align: center; color: #666;">
-                            Ingen bevægelsesdata endnu. Vent på data fra ESP32...
+                        <td colspan="4" style="text-align: center; color: #666;">
+                            Ingen miljødata endnu. Venter på data fra ESP32...
                         </td>
                     </tr>
                 {% endif %}
             </tbody>
         </table>
         
-        <div style="margin-top: 20px; padding: 15px; background-color: #e8f5e8; border-radius: 5px;">
+        <div class="status-box">
             <strong>📡 ESP32 Status:</strong> 
-            <span id="esp32-status">Venter på forbindelse...</span>
+            <span id="esp32-status">Venter på miljødata...</span>
         </div>
     </div>
 </body>
