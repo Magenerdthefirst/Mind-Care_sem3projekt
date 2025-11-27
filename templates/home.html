@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hjem - Sundhedsapp</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background-color: #3498db;
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .logout-btn {
+            background-color: #e74c3c;
+            color: white;
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .logout-btn:hover {
+            background-color: #c0392b;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .welcome-card {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .dashboard-card {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        .dashboard-card h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+        .dashboard-card p {
+            color: #7f8c8d;
+            margin-bottom: 1rem;
+        }
+        .card-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🏥 Health-care</h1>
+        <div class="user-info">
+            <span>Velkommen, {{ user }}!</span>
+            <a href="{{ url_for('logout') }}" class="logout-btn">Log ud</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="welcome-card">
+            <h2>Velkommen til din Health-care</h2>
+            <p>Her kan du se din sundhedsinformation på en sikker måde.</p>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <div class="card-icon">📊</div>
+                <h3>Sundhedsdata</h3>
+                <p>Se og administrer dine sundhedsoplysninger</p>
+                <a href="#" class="btn">Åbn</a>
+            </div>
+
+            <div class="dashboard-card">
+                <div class="card-icon">📅</div>
+                <h3>bevæglese i hjemmet</h3>
+                <p>her kan du se om der har været bevæglese sensoren registere hvert 10 min</p>
+                <a href="bevæglese" class="btn">Åbn</a>
+            </div>
+
+            <div class="dashboard-card">
+                <div class="card-icon">💊</div>
+                <h3>Temperatur og luftfugtighed</h3>
+                <p>Hold styr på temperatur og luftfugtighed fra sensoren</p>
+                <a href="#" class="btn">Åbn</a>
+            </div>
+
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>
