@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session , jsonify
 import psycopg2
 import hashlib
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
@@ -27,7 +28,7 @@ def login_required(func):
         if "user" not in session:
             return redirect(url_for("login"))
         return func(*args, **kwargs)
-    wrapper.__name__ = func.__name__ 
+    wrapper.__name__ = func.__name__  # Flask kræver dette
     return wrapper
 
 # --- ROUTES ---
@@ -124,7 +125,7 @@ def temperatur_fugt():
     if conn:
         try:
             cur = conn.cursor()
-            cur.execute("SELECT date_recorded, temperature, humidity, window_status FROM environment_data ORDER BY date_recorded DESC")
+            cur.execute("SELECT timestamp, temperatur, fugtighed FROM temp_fugt ORDER BY timestamp DESC")
             rows = cur.fetchall()
             
             for row in rows:
@@ -132,7 +133,7 @@ def temperatur_fugt():
                     'date': row[0],
                     'temperature': row[1], 
                     'humidity': row[2],
-                    'window_status': row[3]
+                    'window_status': 'Auto'  # Da din tabel ikke har vindue status
                 })
         except psycopg2.Error as e:
             print(f"Database fejl: {e}")
@@ -140,9 +141,50 @@ def temperatur_fugt():
             conn.close()
             
     return render_template("tempertur_fugt.html", environment_data=environment_data)
+#gemmer data fra vores esp32 til vores sql database som også bliver gemt via api´et 
+@app.route("/api/temp_fugt", methods=["POST"])
+def api_temp_fugt():
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"error": "Ingen data modtaget"}), 400
+            
+        temperatur = data.get("temperatur")
+        fugtighed = data.get("fugtighed") 
+        timestamp = data.get("timestamp")
+
+        if temperatur is None or fugtighed is None or timestamp is None:
+            return jsonify({"error": "Mangler felter"}), 400
+        
+        conn = get_db()
+        if not conn:
+            return jsonify({"error": "Database forbindelsesfejl"}), 500
+            
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO temp_fugt (temperatur, fugtighed, timestamp) VALUES (%s, %s, %s)",
+                (temperatur, fugtighed, timestamp)
+            )
+            conn.commit()
+            print(f" Data modtaget: {temperatur}°C, {fugtighed}%, {timestamp}")
+            return jsonify({"message": "Data gemt succesfuldt"}), 201
+        
+        except psycopg2.Error as e:
+            print(f"Database fejl: {e}")
+            return jsonify({"error": "Database fejl"}), 500
+        finally:
+            conn.close()
+            
+    except Exception as e:
+        print(f"API fejl: {e}")
+        return jsonify({"error": "Server fejl"}), 500
+
+
 
 # --- START APP ---
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
 
 
