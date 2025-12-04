@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dør Kontrol - Sundhedsapp</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        
+        .door-status {
+            font-size: 24px;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        
+        .status-open {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        
+        .status-closed {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        
+        .control-buttons {
+            margin: 30px 0;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            margin: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-open {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-open:hover {
+            background-color: #218838;
+        }
+        
+        .btn-close {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .btn-close:hover {
+            background-color: #c82333;
+        }
+        
+        .btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .home-btn {
+            background-color: #2c3e50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            text-decoration: none;
+            display: inline-block;
+            font-family: Arial, sans-serif;
+        }
+        
+        .home-btn:hover {
+            background-color: #34495e;
+            color: white;
+            text-decoration: none;
+        }
+        
+        .message {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .door-icon {
+            font-size: 60px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/home" class="home-btn">🏠 Tilbage til Home</a>
+        <h1>🚪 Dør Kontrol</h1>
+        
+        <div class="door-icon">
+            <span id="doorIcon">🚪</span>
+        </div>
+        
+        <div id="doorStatus" class="door-status status-closed">
+            🔒 Dør Status: Ukendt
+        </div>
+        
+        <div class="control-buttons">
+            <button id="openBtn" class="btn btn-open" onclick="controlDoor('open')">
+                🔓 Åbn Dør
+            </button>
+            <button id="closeBtn" class="btn btn-close" onclick="controlDoor('close')">
+                🔒 Luk Dør
+            </button>
+        </div>
+        
+        <div id="message" class="message" style="display: none;"></div>
+        
+        <div style="margin-top: 30px; padding: 15px; background-color: #e8f5e8; border-radius: 5px;">
+            <strong>📡 Forbindelses Status:</strong> 
+            <span id="connection-status">Tjekker forbindelse...</span>
+        </div>
+    </div>
+
+    <script>
+        let doorState = 'unknown';
+        
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            // Skjul besked efter 5 sekunder
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        function updateDoorStatus(status) {
+            const statusDiv = document.getElementById('doorStatus');
+            const iconSpan = document.getElementById('doorIcon');
+            
+            if (status === 'open') {
+                statusDiv.className = 'door-status status-open';
+                statusDiv.innerHTML = '🔓 Dør Status: Åben';
+                iconSpan.textContent = '🚪';
+                doorState = 'open';
+            } else if (status === 'closed') {
+                statusDiv.className = 'door-status status-closed';
+                statusDiv.innerHTML = '🔒 Dør Status: Lukket';
+                iconSpan.textContent = '🚪';
+                doorState = 'closed';
+            } else {
+                statusDiv.className = 'door-status';
+                statusDiv.innerHTML = '❓ Dør Status: Ukendt';
+                iconSpan.textContent = '🚪';
+                doorState = 'unknown';
+            }
+        }
+        
+        async function controlDoor(action) {
+            const openBtn = document.getElementById('openBtn');
+            const closeBtn = document.getElementById('closeBtn');
+            
+            // Deaktiver knapper under operation
+            openBtn.disabled = true;
+            closeBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/solenoid', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ action: action })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage(data.message, 'success');
+                    
+                    // Opdater status lokalt (vil blive bekræftet af ESP32 senere)
+                    if (action === 'open') {
+                        updateDoorStatus('open');
+                    } else {
+                        updateDoorStatus('closed');
+                    }
+                } else {
+                    showMessage(`Fejl: ${data.error}`, 'error');
+                }
+                
+            } catch (error) {
+                showMessage(`Netværksfejl: ${error.message}`, 'error');
+            } finally {
+                // Genaktiver knapper
+                openBtn.disabled = false;
+                closeBtn.disabled = false;
+            }
+        }
+        
+        // Tjek forbindelsesstatus
+        function updateConnectionStatus() {
+            document.getElementById('connection-status').textContent = 'Forbundet til server';
+        }
+        
+        // Kør når siden loader
+        document.addEventListener('DOMContentLoaded', function() {
+            updateConnectionStatus();
+            updateDoorStatus('unknown');
+        });
+    </script>
+</body>
+</html>

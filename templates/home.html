@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hjem - Sundhedsapp</title>
+    <title>Mind Care - Hjemmeside for pårørende</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -97,7 +97,7 @@
 </head>
 <body>
     <header class="header">
-        <h1>🏥 Health-care</h1>
+        <h1>Mind Care</h1>
         <div class="user-info">
             <span>Velkommen, {{ user }}!</span>
             <a href="{{ url_for('logout') }}" class="logout-btn">Log ud</a>
@@ -106,27 +106,27 @@
 
     <div class="container">
         <div class="welcome-card">
-            <h2>Velkommen til din Health-care</h2>
+            <h2>Velkommen til din Mind Care</h2>
             <p>Her kan du se din sundhedsinformation på en sikker måde.</p>
         </div>
 
         <div class="dashboard-grid">
             <div class="dashboard-card">
-                <div class="card-icon">📊</div>
-                <h3>Sundhedsdata</h3>
+                <div class="card-icon">🚪</div>
+                <h3>Dør status</h3>
                 <p>Se og administrer dine sundhedsoplysninger</p>
-                <a href="#" class="btn">Åbn</a>
+                <a href="{{ url_for('door_control') }}" class="btn">Åbn</a>
             </div>
 
             <div class="dashboard-card">
-                <div class="card-icon">📅</div>
+                <div class="card-icon">🏃🏾‍♂️</div>
                 <h3>bevæglese i hjemmet</h3>
                 <p>her kan du se om der har været bevæglese sensoren registere hvert 10 min</p>
                 <a href="{{ url_for('bevaegelse') }}" class="btn">Åbn</a>
             </div>
 
             <div class="dashboard-card">
-                <div class="card-icon">💊</div>
+                <div class="card-icon">🌡️</div>
                 <h3>Temperatur og luftfugtighed</h3>
                 <p>Hold styr på temperatur og luftfugtighed fra sensoren</p>
                 <a href="{{ url_for('temperatur_fugt') }}" class="btn">Åbn</a>
