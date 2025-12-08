@@ -68,6 +68,28 @@
             font-weight: bold;
         }
         
+        .trigger-info {
+            font-size: 0.8em;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .temp-high {
+            background-color: #ffe6e6;
+        }
+        
+        .humidity-high {
+            background-color: #e6f3ff;
+        }
+        
+        .current-status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+        }
+        
         .status-box {
             margin-top: 20px;
             padding: 15px;
@@ -98,32 +120,50 @@
 <body>
     <div class="container">
         <a href="/home" class="home-btn">Tilbage</a>
-        <h1>🌡️ Temperatur & Fugt</h1>
+        <h1>🌡️ Temperatur & luftfugtighed</h1>
         
         <table id="environmentTable">
             <thead>
                 <tr>
                     <th>📅 Dato</th>
-                    <th>🌡️ Temperatur</th>
-                    <th>💧 Fugt</th>
-                    <th>🪟 Vindue</th>
+                    <th>Temperatur</th>
+                    <th>Fugtighed</th>
+                    <th>Vindue status</th>
+                    <th>📋 Årsag til udluftning</th>
                 </tr>
             </thead>
             <tbody>
                 {% if environment_data %}
                     {% for data in environment_data %}
-                    <tr>
+                    <tr class="{% if data.temp_trigger %}temp-high{% elif data.humidity_trigger %}humidity-high{% endif %}">
                         <td>{{ data.date }}</td>
-                        <td class="temp-col">{{ data.temperature }}°C</td>
-                        <td class="humidity-col">{{ data.humidity }}%</td>
+                        <td class="temp-col">
+                            {{ data.temperature }}°C
+                            {% if data.temp_trigger %}
+                                <span style="color: red;">🔥</span>
+                            {% endif %}
+                        </td>
+                        <td class="humidity-col">
+                            {{ data.humidity }}%
+                            {% if data.humidity_trigger %}
+                                <span style="color: blue;">💧</span>
+                            {% endif %}
+                        </td>
                         <td class="{% if data.window_status == 'Åben' %}window-open{% else %}window-closed{% endif %}">
-                            {{ data.window_status }}
+                            {% if data.window_status == 'Åben' %}
+                                 Åben
+                            {% else %}
+                                 Lukket
+                            {% endif %}
+                        </td>
+                        <td class="trigger-info">
+                            {{ data.window_reason }}
                         </td>
                     </tr>
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="4" style="text-align: center; color: #666;">
+                        <td colspan="5" style="text-align: center; color: #666;">
                             Ingen miljødata endnu. Venter på data fra ESP32...
                         </td>
                     </tr>
@@ -131,9 +171,26 @@
             </tbody>
         </table>
         
+        {% if environment_data %}
+        <div class="current-status">
+            <h3>📊 Aktuel Status (seneste måling)</h3>
+            {% set latest = environment_data[0] %}
+            <p><strong>🌡️ Temperatur:</strong> {{ latest.temperature }}°C 
+               (Tærskel: >25°C {% if latest.temp_trigger %}<span style="color: red;">- UDLØST</span>{% endif %})</p>
+            <p><strong>💧 Fugtighed:</strong> {{ latest.humidity }}% 
+               (Tærskel: >70% {% if latest.humidity_trigger %}<span style="color: blue;">- UDLØST</span>{% endif %})</p>
+            <p><strong>🪟 Vindue:</strong> 
+                <span class="{% if latest.window_status == 'Åben' %}window-open{% else %}window-closed{% endif %}">
+                    {{ latest.window_status }}
+                </span>
+                - {{ latest.window_reason }}
+            </p>
+        </div>
+        {% endif %}
+        
         <div class="status-box">
-            <strong>📡 ESP32 Status:</strong> 
-            <span id="esp32-status">Venter på miljødata...</span>
+            <strong>📡 ESP32 Automatik:</strong> 
+            Vinduet åbnes automatisk når temperatur > 25°C ELLER fugtighed > 70%
         </div>
     </div>
 </body>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hoved Dør Kontrol - Sundhedsapp</title>
+    <title>Hoveddør kontrol - Mind Care</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -128,8 +128,8 @@
 </head>
 <body>
     <div class="container">
-        <a href="/home" class="home-btn">🏠 Tilbage til Home</a>
-        <h1>🚪 HovedDør Kontrol</h1>
+        <a href="/home" class="home-btn">🏠 Tilbage til hjem</a>
+        <h1>🚪 Hoveddør kontrol</h1>
         
         <div class="door-icon">
             <span id="doorIcon">🚪</span>
@@ -141,17 +141,17 @@
         
         <div class="control-buttons">
             <button id="openBtn" class="btn btn-open" onclick="controlDoor('open')">
-                🔓 Åbn Hoved dør
+                🔓 Åben hoveddør
             </button>
             <button id="closeBtn" class="btn btn-close" onclick="controlDoor('close')">
-                🔒 Luk Hoved dør
+                🔒 Luk hoveddør
             </button>
         </div>
         
         <div id="message" class="message" style="display: none;"></div>
         
         <div style="margin-top: 30px; padding: 15px; background-color: #e8f5e8; border-radius: 5px;">
-            <strong>📡 Forbindelses Status:</strong> 
+            <strong>📡 Forbindelses status:</strong> 
             <span id="connection-status">Tjekker forbindelse...</span>
         </div>
     </div>
@@ -187,7 +187,7 @@
                 doorState = 'closed';
             } else {
                 statusDiv.className = 'door-status';
-                statusDiv.innerHTML = '❓ Dør Status: Ukendt';
+                statusDiv.innerHTML = '❓ Status på hoveddør: Ukendt';
                 iconSpan.textContent = '🚪';
                 doorState = 'unknown';
             }

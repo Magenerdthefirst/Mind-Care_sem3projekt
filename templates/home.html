@@ -106,29 +106,29 @@
 
     <div class="container">
         <div class="welcome-card">
-            <h2>Velkommen til din Mind Care</h2>
-            <p>Her kan du se din sundhedsinformation på en sikker måde.</p>
+            <h2>Velkommen til Mind Care</h2>
+            <p>Her kan du se hjemmets status</p>
         </div>
 
         <div class="dashboard-grid">
             <div class="dashboard-card">
                 <div class="card-icon">🚪</div>
-                <h3>Dør status</h3>
-                <p>Se og administrer dine sundhedsoplysninger</p>
+                <h3>Status på hoveddør</h3>
+                <p>Se og administrer status på hoveddøren</p>
                 <a href="{{ url_for('door_control') }}" class="btn">Åbn</a>
             </div>
 
             <div class="dashboard-card">
                 <div class="card-icon">🏃🏾‍♂️</div>
-                <h3>bevæglese i hjemmet</h3>
-                <p>her kan du se om der har været bevæglese sensoren registere hvert 10 min</p>
+                <h3>Bevægelse i hjemmet</h3>
+                <p>Her kan du se om der har været bevægelse i hjemmet</p>
                 <a href="{{ url_for('bevaegelse') }}" class="btn">Åbn</a>
             </div>
 
             <div class="dashboard-card">
                 <div class="card-icon">🌡️</div>
                 <h3>Temperatur og luftfugtighed</h3>
-                <p>Hold styr på temperatur og luftfugtighed fra sensoren</p>
+                <p>Se status på temperatur og luftfugtighed</p>
                 <a href="{{ url_for('temperatur_fugt') }}" class="btn">Åbn</a>
             </div>
 

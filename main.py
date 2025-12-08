@@ -46,6 +46,10 @@ MAX_INPUT_LENGTH = 100
 COMMAND_TIMEOUT_SECONDS = 10
 SESSION_TIMEOUT_HOURS = 1
 
+# ESP32 Window Control Thresholds (same as ESP32 code)
+WINDOW_TEMP_THRESHOLD = 25.0
+WINDOW_HUMIDITY_THRESHOLD = 70.0
+
 
 class DatabaseConfig:
     """Database configuration class for centralized configuration management.
@@ -133,6 +137,42 @@ def validate_sensor_data(temperature: Any, humidity: Any) -> Tuple[bool, str, Op
     except (ValueError, TypeError):
         return False, "Temperatur og fugtighed skal være numeriske værdier", None
 
+
+def calculate_window_status(temperature: float, humidity: float) -> Dict[str, Any]:
+    """Calculate window status based on ESP32 logic.
+    
+    This function uses the same logic as the ESP32 to determine if the window
+    should be open or closed based on temperature and humidity thresholds.
+    
+    Args:
+        temperature: Current temperature in Celsius
+        humidity: Current humidity percentage
+        
+    Returns:
+        Dict containing window status information
+    """
+    # Same logic as ESP32: should_open = (temperature > TEMP_THRESHOLD) or (humidity > HUMIDITY_THRESHOLD)
+    should_open = (temperature > WINDOW_TEMP_THRESHOLD) or (humidity > WINDOW_HUMIDITY_THRESHOLD)
+    
+    status = "Åben" if should_open else "Lukket"
+    reason = []
+    
+    if temperature > WINDOW_TEMP_THRESHOLD:
+        reason.append(f"Temp {temperature}°C > {WINDOW_TEMP_THRESHOLD}°C")
+    if humidity > WINDOW_HUMIDITY_THRESHOLD:
+        reason.append(f"Fugt {humidity}% > {WINDOW_HUMIDITY_THRESHOLD}%")
+    
+    if not reason:
+        reason.append("Normale værdier")
+    
+    return {
+        'status': status,
+        'should_open': should_open,
+        'reason': " | ".join(reason),
+        'temp_trigger': temperature > WINDOW_TEMP_THRESHOLD,
+        'humidity_trigger': humidity > WINDOW_HUMIDITY_THRESHOLD
+    }
+
 # --- AUTHENTICATION AND VALIDATION ---
 def login_required(func):
     """Decorator to require user authentication for protected routes.
@@ -195,11 +235,11 @@ def login():
         Flask Response: Rendered template or redirect response
     """
     if request.method == "POST":
-        # Extract and sanitize input data
+        # henter vores username og password fra formen
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         
-        # Comprehensive input validation
+        # validerer vores input for password og username
         username_valid, username_error = validate_input(username)
         password_valid, password_error = validate_input(password)
         
@@ -326,11 +366,19 @@ def temperatur_fugt():
             rows = cur.fetchall()
             
             for row in rows:
+                timestamp, temperature, humidity = row
+                
+                # vi beregner vindues status via vores esp32 logik som beregner det da det ikke gemmes på databasen
+                window_info = calculate_window_status(temperature, humidity)
+                
                 environment_data.append({
-                    'date': row[0],
-                    'temperature': row[1], 
-                    'humidity': row[2],
-                    'window_status': 'Auto' 
+                    'date': timestamp,
+                    'temperature': temperature, 
+                    'humidity': humidity,
+                    'window_status': window_info['status'],
+                    'window_reason': window_info['reason'],
+                    'temp_trigger': window_info['temp_trigger'],
+                    'humidity_trigger': window_info['humidity_trigger']
                 })
         except psycopg2.Error as e:
             print(f"Database fejl: {e}")
@@ -342,10 +390,9 @@ def temperatur_fugt():
 @app.route("/door_control")
 @login_required
 def door_control():
-    """Display door control interface with current door status.
-    
-    Returns:
-        Rendered template with door status
+    """hoveddør bliver status set om døren er open eller lukket.
+    sammen med at den bruger comit til at sender signaler
+    som åbner og lukker vores hoveddør 
     """
     conn = get_db_connection()
     door_status = "Ukendt"
@@ -382,19 +429,19 @@ def api_temp_fugt():
         JSON response with success/error message and appropriate HTTP status code
     """
     try:
-        # Extract JSON data with error handling
+        # json request fejlhåndtering hvis nu den ikke får modtaget data eller får en null fil f,eks
         data = request.get_json(force=True)
         
         if not data:
-            logger.warning(f"Empty JSON payload received from {request.remote_addr}")
+            logger.warning(f"tom JSON payload du fik fra {request.remote_addr}")
             return jsonify({"error": "Ingen data modtaget"}), 400
             
-        # Extract required fields
+        # bruger vores nødvendige områder 
         temperatur = data.get("temperatur")
         fugtighed = data.get("fugtighed") 
         timestamp = data.get("timestamp")
 
-        # Validate required fields presence
+        # Validatere nødvendige felter tilstedeværelse
         if temperatur is None or fugtighed is None or timestamp is None:
             logger.warning(
                 f"Missing required fields in sensor data from {request.remote_addr}: "
@@ -402,7 +449,7 @@ def api_temp_fugt():
             )
             return jsonify({"error": "Mangler påkrævede felter (temperatur, fugtighed, timestamp)"}), 400
         
-        # Validate sensor data using helper function
+        # Validatere sensor data ved hjælp af hjælpefunktion
         is_valid, error_msg, validated_data = validate_sensor_data(temperatur, fugtighed)
         if not is_valid:
             logger.warning(f"Invalid sensor data from {request.remote_addr}: {error_msg}")
@@ -410,14 +457,14 @@ def api_temp_fugt():
             
         temp_float, humidity_float = validated_data
         
-        # Validate timestamp format (basic check)
+        # Validatere timestamp format
         if not isinstance(timestamp, str) or len(timestamp.strip()) == 0:
             return jsonify({"error": "Ugyldig timestamp format"}), 400
         
-        # Database operations with transaction handling
+        # Database operationer med transaktionshåndtering
         conn = get_db_connection()
         if not conn:
-            logger.error("Database connection failed in temp_fugt API")
+            logger.error("Database connection fejlede i temp_fugt API")
             return jsonify({"error": "Database forbindelsesfejl"}), 500
             
         try:
@@ -429,27 +476,27 @@ def api_temp_fugt():
             conn.commit()
             
             logger.info(
-                f"Sensor data stored successfully: {temp_float}°C, {humidity_float}%, "
-                f"timestamp={timestamp} from {request.remote_addr}"
+                f"Sensor data gemt succesfuldt: {temp_float}°C, {humidity_float}%, "
+                f"timestamp={timestamp} fra {request.remote_addr}"
             )
             return jsonify({"message": "Sensordata gemt succesfuldt"}), 201
         
         except psycopg2.Error as e:
-            logger.error(f"Database error in temp_fugt API: {e}")
+            logger.error(f"Database fejl i temp_fugt API: {e}")
             conn.rollback()
             return jsonify({"error": "Database fejl ved lagring"}), 500
         except Exception as e:
-            logger.error(f"Unexpected error in temp_fugt API: {e}")
+            logger.error(f"Uventet fejl i temp_fugt API: {e}")
             conn.rollback()
             return jsonify({"error": "Uventet server fejl"}), 500
         finally:
             conn.close()
             
     except (ValueError, TypeError) as e:
-        logger.warning(f"Invalid JSON data from {request.remote_addr}: {e}")
+        logger.warning(f"Ugyldig JSON data fra {request.remote_addr}: {e}")
         return jsonify({"error": "Ugyldig JSON format"}), 400
     except Exception as e:
-        logger.error(f"Critical error in temp_fugt API: {e}")
+        logger.error(f"Kritisk fejl i temp_fugt API: {e}")
         return jsonify({"error": "Kritisk server fejl"}), 500
 
 @app.route("/api/pir", methods=["POST"])
@@ -468,7 +515,7 @@ def api_pir():
         
         conn = get_db_connection()
         if not conn:
-            logger.error("Database connection failed in PIR API")
+            logger.error("Database forbindelse fejlede i PIR API")
             return jsonify({"error": "Database forbindelsesfejl"}), 500
             
         try:
@@ -485,7 +532,7 @@ def api_pir():
             return jsonify({"message": "Bevægelse data gemt succesfuldt"}), 201
         
         except psycopg2.Error as e:
-            logger.error(f"Database error in PIR API: {e}")
+            logger.error(f"Database fejl i PIR API: {e}")
             conn.rollback()
             return jsonify({"error": "Database fejl"}), 500
         finally:
@@ -544,7 +591,7 @@ def api_solenoid_check():
     try:
         conn = get_db_connection()
         if not conn:
-            logger.error("Database connection failed in solenoid check API")
+            logger.error("Database forbindelse fejlede i solenoid check API")
             return jsonify({"error": "Database forbindelsesfejl"}), 500
             
         try:
@@ -562,7 +609,7 @@ def api_solenoid_check():
                 if result:
                     command = "open" if result[0] else "close"
                     
-                    # Mark command as processed by updating timestamp
+                    # markere kommandoen som hentet ved at justere timestamp tilbage
                     cur.execute("""
                         UPDATE door 
                         SET timestamp = timestamp - INTERVAL '1 hour'
@@ -602,7 +649,7 @@ def api_door_log():
             return jsonify({"error": "Mangler is_open eller timestamp"}), 400
         
         
-        # Normalize boolean values
+        # Normalisere boolske værdier
         if isinstance(is_open, int):
             is_open = bool(is_open)
         elif isinstance(is_open, str):
@@ -636,11 +683,11 @@ def api_door_log():
         print(f"API fejl: {e}")
         return jsonify({"error": "Server fejl"}), 500
 
-# --- ERROR HANDLERS ---
+# --- FEJLHÅNDTERING ---
 @app.errorhandler(404)
 def not_found_error(error):
-    """Handle 404 errors."""
-    logger.warning(f"404 error: {request.url} from {request.remote_addr}")
+    """Håndter 404 fejl."""
+    logger.warning(f"404 fejl: {request.url} fra {request.remote_addr}")
     return render_template('404.html'), 404
 
 
@@ -660,21 +707,21 @@ def forbidden_error(error):
 
 # --- APPLICATION STARTUP ---
 def init_app() -> None:
-    """Initialize application with startup checks and configuration."""
-    logger.info("Starting Health Monitoring System")
+    """Initialisere applikationen med opstartstjek og konfiguration."""
+    logger.info("Starter Mind Care Overvågningssystem")
     
     # Test database connection at startup
     conn = get_db_connection()
     if conn:
-        logger.info("Database connection successful at startup")
+        logger.info("Database forbindelse succesfuld ved opstart")
         conn.close()
     else:
-        logger.error("Failed to connect to database at startup")
-        raise RuntimeError("Cannot start application without database connection")
+        logger.error("Database forbindelse fejlede ved opstart")
+        raise RuntimeError("Kan ikke starte applikationen uden database forbindelse")
     
     # Log configuration
-    logger.info(f"Application configured with database: {db_config.dbname}@{db_config.host}:{db_config.port}")
-    logger.info("Health Monitoring System started successfully")
+    logger.info(f"Applikation konfigureret med database: {db_config.dbname}@{db_config.host}:{db_config.port}")
+    logger.info("Mind Care Overvågningssystem startet succesfuldt")
 
 
 if __name__ == "__main__":
