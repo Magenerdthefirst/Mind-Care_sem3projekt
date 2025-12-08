@@ -1,17 +1,3 @@
-"""Health Monitoring System Flask Application.
-
-A Flask web application for monitoring health data from ESP32 sensors,
-including PIR motion detection, temperature/humidity monitoring, and
-solenoid door control.
-
-This application follows PEP8 standards and professional coding practices:
-- Comprehensive error handling and logging
-- Input validation and sanitization
-- Type hints for better code documentation
-- Modular design for maintainability
-- Security considerations
-"""
-
 import os
 import logging
 from typing import Optional, Dict, Any, List, Tuple
