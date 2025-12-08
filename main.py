@@ -1,22 +1,10 @@
 import os
-import logging
 from typing import Optional, Dict, Any, List, Tuple
 from functools import wraps
 
 import psycopg2
 import psycopg2.extensions
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-
-# Configure logging with proper formatting
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('health_app.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
 
 # Flask application configuration
 app = Flask(__name__)
@@ -38,14 +26,14 @@ WINDOW_HUMIDITY_THRESHOLD = 70.0
 
 
 class DatabaseConfig:
-    """Database configuration class for centralized configuration management.
+    """Database konfigurationsklasse for centraliseret konfigurationsstyring.
     
-    This class encapsulates all database configuration parameters and provides
-    a single point of configuration management with environment variable support.
+    Denne klasse indkapsler alle databasekonfigurationsparametre og giver
+    et enkelt punkt for konfigurationsstyring med understøttelse af miljøvariabler.
     """
     
     def __init__(self) -> None:
-        """Initialize database configuration from environment variables."""
+        """Initialiser databasekonfiguration fra miljøvariabler."""
         self.dbname: str = os.environ.get('DB_NAME', 'health')
         self.user: str = os.environ.get('DB_USER', 'postgres')
         self.password: str = os.environ.get('DB_PASSWORD', 'demens')
@@ -54,7 +42,7 @@ class DatabaseConfig:
         self.connect_timeout: int = int(os.environ.get('DB_TIMEOUT', '10'))
 
     def get_connection_params(self) -> Dict[str, Any]:
-        """Get database connection parameters as dictionary.
+        """Hent databaseforbindelsesparametre som ordbog.
         
         Returns:
             Dict containing database connection parameters
@@ -88,13 +76,13 @@ def get_db_connection() -> Optional[psycopg2.extensions.connection]:
         conn.autocommit = False
         return conn
     except psycopg2.OperationalError as e:
-        logger.error(f"Database operational error: {e}")
+        print(f"Database operational error: {e}")
         return None
     except psycopg2.Error as e:
-        logger.error(f"Database error: {e}")
+        print(f"Database error: {e}")
         return None
     except Exception as e:
-        logger.error(f"Unexpected database connection error: {e}")
+        print(f"Unexpected database connection error: {e}")
         return None
 
 
@@ -175,10 +163,7 @@ def login_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if "user" not in session:
-            logger.warning(
-                f"Unauthorized access attempt to {func.__name__} "
-                f"from IP: {request.remote_addr}"
-            )
+            print(f"Unauthorized access attempt to {func.__name__} from IP: {request.remote_addr}")
             return redirect(url_for("login"))
         return func(*args, **kwargs)
     return wrapper
@@ -230,21 +215,14 @@ def login():
         password_valid, password_error = validate_input(password)
         
         if not username_valid:
-            logger.warning(
-                f"Invalid username input from IP: {request.remote_addr} - {username_error}"
-            )
             return render_template("login.html", error=username_error)
             
         if not password_valid:
-            logger.warning(
-                f"Invalid password input from IP: {request.remote_addr} - {password_error}"
-            )
             return render_template("login.html", error=password_error)
 
         # prøver at få database connection
         conn = get_db_connection()
         if not conn:
-            logger.error("Database connection failed during login attempt")
             return render_template("login.html", error="Database forbindelsesfejl")
         
         try:
@@ -266,27 +244,18 @@ def login():
                         session["user_id"] = user_id
                         session.permanent = True
                         
-                        logger.info(f"Successful authentication for user: {username}")
                         return redirect(url_for("home"))
                     else:
-                        logger.warning(
-                            f"Failed authentication attempt for user: {username} "
-                            f"from IP: {request.remote_addr}"
-                        )
                         return render_template("login.html", error="Forkert brugernavn eller password")
                 else:
-                    logger.warning(
-                        f"Authentication attempt for non-existent user: {username} "
-                        f"from IP: {request.remote_addr}"
-                    )
                     # Generic error message to prevent username enumeration
                     return render_template("login.html", error="Forkert brugernavn eller password")
                     
         except psycopg2.Error as e:
-            logger.error(f"Database error during authentication: {e}")
+            print(f"Database error during authentication: {e}")
             return render_template("login.html", error="Der opstod en systemfejl")
         except Exception as e:
-            logger.error(f"Unexpected error during authentication: {e}")
+            print(f"Unexpected error during authentication: {e}")
             return render_template("login.html", error="Der opstod en uventet fejl")
         finally:
             conn.close()
@@ -419,7 +388,6 @@ def api_temp_fugt():
         data = request.get_json(force=True)
         
         if not data:
-            logger.warning(f"tom JSON payload du fik fra {request.remote_addr}")
             return jsonify({"error": "Ingen data modtaget"}), 400
             
         # bruger vores nødvendige områder 
@@ -429,16 +397,11 @@ def api_temp_fugt():
 
         # Validatere nødvendige felter tilstedeværelse
         if temperatur is None or fugtighed is None or timestamp is None:
-            logger.warning(
-                f"Missing required fields in sensor data from {request.remote_addr}: "
-                f"temp={temperatur}, humidity={fugtighed}, timestamp={timestamp}"
-            )
             return jsonify({"error": "Mangler påkrævede felter (temperatur, fugtighed, timestamp)"}), 400
         
-        # Validatere sensor data ved hjælp af hjælpefunktion
+        # Validate sensor data using helper function
         is_valid, error_msg, validated_data = validate_sensor_data(temperatur, fugtighed)
         if not is_valid:
-            logger.warning(f"Invalid sensor data from {request.remote_addr}: {error_msg}")
             return jsonify({"error": error_msg}), 400
             
         temp_float, humidity_float = validated_data
@@ -450,7 +413,6 @@ def api_temp_fugt():
         # Database operationer med transaktionshåndtering
         conn = get_db_connection()
         if not conn:
-            logger.error("Database connection fejlede i temp_fugt API")
             return jsonify({"error": "Database forbindelsesfejl"}), 500
             
         try:
@@ -461,28 +423,25 @@ def api_temp_fugt():
                 )
             conn.commit()
             
-            logger.info(
-                f"Sensor data gemt succesfuldt: {temp_float}°C, {humidity_float}%, "
-                f"timestamp={timestamp} fra {request.remote_addr}"
-            )
+            print(f"Sensor data stored: {temp_float}°C, {humidity_float}%, {timestamp}")
             return jsonify({"message": "Sensordata gemt succesfuldt"}), 201
         
         except psycopg2.Error as e:
-            logger.error(f"Database fejl i temp_fugt API: {e}")
+            print(f"Database fejl i temp_fugt API: {e}")
             conn.rollback()
             return jsonify({"error": "Database fejl ved lagring"}), 500
         except Exception as e:
-            logger.error(f"Uventet fejl i temp_fugt API: {e}")
+            print(f"Uventet fejl i temp_fugt API: {e}")
             conn.rollback()
             return jsonify({"error": "Uventet server fejl"}), 500
         finally:
             conn.close()
             
     except (ValueError, TypeError) as e:
-        logger.warning(f"Ugyldig JSON data fra {request.remote_addr}: {e}")
+        print(f"Invalid JSON data: {e}")
         return jsonify({"error": "Ugyldig JSON format"}), 400
     except Exception as e:
-        logger.error(f"Kritisk fejl i temp_fugt API: {e}")
+        print(f"Critical error in temp_fugt API: {e}")
         return jsonify({"error": "Kritisk server fejl"}), 500
 
 @app.route("/api/pir", methods=["POST"])
@@ -501,7 +460,6 @@ def api_pir():
         
         conn = get_db_connection()
         if not conn:
-            logger.error("Database forbindelse fejlede i PIR API")
             return jsonify({"error": "Database forbindelsesfejl"}), 500
             
         try:
@@ -514,11 +472,11 @@ def api_pir():
             conn.commit()
             
             movement_text = "Bevægelse detekteret" if movement_bool else "Ingen bevægelse"
-            logger.info(f"PIR data received: {movement_text} ({movement_bool}), {timestamp}")
+            print(f"PIR data received: {movement_text} ({movement_bool}), {timestamp}")
             return jsonify({"message": "Bevægelse data gemt succesfuldt"}), 201
         
         except psycopg2.Error as e:
-            logger.error(f"Database fejl i PIR API: {e}")
+            print(f"Database fejl i PIR API: {e}")
             conn.rollback()
             return jsonify({"error": "Database fejl"}), 500
         finally:
@@ -545,7 +503,6 @@ def api_solenoid():
         
         conn = get_db_connection()
         if not conn:
-            logger.error("Database connection failed in solenoid API")
             return jsonify({"error": "Database forbindelsesfejl"}), 500
             
         try:
@@ -557,11 +514,11 @@ def api_solenoid():
                 )
             conn.commit()
             
-            logger.info(f"Solenoid command received: {action} -> {is_open}")
+            print(f"Solenoid command received: {action} -> {is_open}")
             return jsonify({"message": f"Dør kommando sendt: {action}"}), 200
         
         except psycopg2.Error as e:
-            logger.error(f"Database error in solenoid API: {e}")
+            print(f"Database error in solenoid API: {e}")
             conn.rollback()
             return jsonify({"error": "Database fejl"}), 500
         finally:
@@ -577,7 +534,6 @@ def api_solenoid_check():
     try:
         conn = get_db_connection()
         if not conn:
-            logger.error("Database forbindelse fejlede i solenoid check API")
             return jsonify({"error": "Database forbindelsesfejl"}), 500
             
         try:
@@ -603,13 +559,13 @@ def api_solenoid_check():
                     """, (result[2],))
                     conn.commit()
                     
-                    logger.info(f"ESP32 command retrieved: {command} (ID: {result[2]})")
+                    print(f"ESP32 command retrieved: {command} (ID: {result[2]})")
                     return jsonify({"command": command}), 200
                 
                 return jsonify({"command": None}), 200
         
         except psycopg2.Error as e:
-            logger.error(f"Database error in solenoid check API: {e}")
+            print(f"Database error in solenoid check API: {e}")
             conn.rollback()
             return jsonify({"error": "Database fejl"}), 500
         finally:
@@ -643,7 +599,6 @@ def api_door_log():
         
         conn = get_db_connection()
         if not conn:
-            logger.error("Database connection failed in door log API")
             return jsonify({"error": "Database forbindelsesfejl"}), 500
             
         try:
@@ -655,11 +610,11 @@ def api_door_log():
             conn.commit()
             
             status_text = "Åben" if is_open else "Lukket"
-            logger.info(f"Door status logged: {status_text} ({is_open}), {timestamp}")
+            print(f"Door status logged: {status_text} ({is_open}), {timestamp}")
             return jsonify({"message": "Dør status gemt succesfuldt"}), 201
         
         except psycopg2.Error as e:
-            logger.error(f"Database error in door log API: {e}")
+            print(f"Database error in door log API: {e}")
             conn.rollback()
             return jsonify({"error": "Database fejl"}), 500
         finally:
@@ -669,45 +624,25 @@ def api_door_log():
         print(f"API fejl: {e}")
         return jsonify({"error": "Server fejl"}), 500
 
-# --- FEJLHÅNDTERING ---
-@app.errorhandler(404)
-def not_found_error(error):
-    """Håndter 404 fejl."""
-    logger.warning(f"404 fejl: {request.url} fra {request.remote_addr}")
-    return render_template('404.html'), 404
 
-
-@app.errorhandler(500)
-def internal_error(error):
-    """Handle 500 errors."""
-    logger.error(f"500 error: {error} from {request.remote_addr}")
-    return render_template('500.html'), 500
-
-
-@app.errorhandler(403)
-def forbidden_error(error):
-    """Handle 403 errors."""
-    logger.warning(f"403 error: Forbidden access from {request.remote_addr}")
-    return render_template('403.html'), 403
 
 
 # --- APPLICATION STARTUP ---
 def init_app() -> None:
-    """Initialisere applikationen med opstartstjek og konfiguration."""
-    logger.info("Starter Mind Care Overvågningssystem")
+    """Initialize application with startup checks and configuration."""
+    print("Starter Health Monitoring System")
     
     # Test database connection at startup
     conn = get_db_connection()
     if conn:
-        logger.info("Database forbindelse succesfuld ved opstart")
+        print("Database forbindelse succesfuld ved opstart")
         conn.close()
     else:
-        logger.error("Database forbindelse fejlede ved opstart")
+        print("Database forbindelse fejlede ved opstart")
         raise RuntimeError("Kan ikke starte applikationen uden database forbindelse")
     
-    # Log configuration
-    logger.info(f"Applikation konfigureret med database: {db_config.dbname}@{db_config.host}:{db_config.port}")
-    logger.info("Mind Care Overvågningssystem startet succesfuldt")
+    print(f"Applikation konfigureret med database: {db_config.dbname}@{db_config.host}:{db_config.port}")
+    print("Mind Care overvågning System startet succesfuldt")
 
 
 if __name__ == "__main__":
@@ -719,7 +654,7 @@ if __name__ == "__main__":
             debug=os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
         )
     except Exception as e:
-        logger.critical(f"Failed to start application: {e}")
+        print(f"Fejlede at starte applikationen: {e}")
         raise
 
 
