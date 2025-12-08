@@ -553,10 +553,10 @@ def api_solenoid_check():
                 cur.execute("""
                     SELECT is_the_door_open, timestamp, id
                     FROM door 
-                    WHERE timestamp > NOW() - INTERVAL '%s seconds'
+                    WHERE timestamp > NOW() - INTERVAL %s
                     ORDER BY timestamp DESC 
                     LIMIT 1
-                """, (COMMAND_TIMEOUT_SECONDS,))
+                """, (f"{COMMAND_TIMEOUT_SECONDS} seconds",))
                 result = cur.fetchone()
                 
                 if result:
