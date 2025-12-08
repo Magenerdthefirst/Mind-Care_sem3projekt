@@ -220,7 +220,7 @@ def login():
         if not password_valid:
             return render_template("login.html", error=password_error)
 
-        # prøver at få database connection
+        # prøver at få database forbindelse
         conn = get_db_connection()
         if not conn:
             return render_template("login.html", error="Database forbindelsesfejl")
@@ -252,10 +252,10 @@ def login():
                     return render_template("login.html", error="Forkert brugernavn eller password")
                     
         except psycopg2.Error as e:
-            print(f"Database error during authentication: {e}")
+            print(f"Database fejl under autentificering: {e}")
             return render_template("login.html", error="Der opstod en systemfejl")
         except Exception as e:
-            print(f"Unexpected error during authentication: {e}")
+            print(f"Uventet fejl under autentificering: {e}")
             return render_template("login.html", error="Der opstod en uventet fejl")
         finally:
             conn.close()
@@ -275,10 +275,10 @@ def home():
 @app.route("/bevægelse")
 @login_required
 def bevaegelse():
-    """Display movement detection data from PIR sensor.
+    """viser bevægelsesdetektering data fra PIR sensor.
     
-    Returns:
-        Rendered template with movement data
+    Returnere:
+        Rendered template med bevægelsesdata
     """
     conn = get_db_connection()
     movement_data = []
@@ -306,10 +306,10 @@ def bevaegelse():
 @app.route("/temperatur_fugt")
 @login_required  
 def temperatur_fugt():
-    """Display temperature and humidity data from sensors.
+    """viser temperature and fugtighed data from sensors.
     
-    Returns:
-        Rendered template with environment data
+    Returnere:
+        Rendered template med miljødata
     """
     conn = get_db_connection()
     environment_data = []
@@ -368,20 +368,13 @@ def door_control():
 
 @app.route("/api/temp_fugt", methods=["POST"])
 def api_temp_fugt():
-    """API endpoint for receiving temperature and humidity data from ESP32 sensors.
+    """API endpoint for receiving temperature and fugtighed data fra ESP32 sensors.
     
-    This endpoint validates incoming sensor data, ensures data integrity,
-    and stores valid measurements in the database with comprehensive error handling.
+    Dette endpoint validerer indkommende sensordata, sikrer dataintegritet,
+    og gemmer gyldige målinger i databasen med omfattende fejlhåndtering.
     
-    Expected JSON payload:
-        {
-            "temperatur": float,  # Temperature in Celsius (-50 to 100)
-            "fugtighed": float,   # Humidity percentage (0 to 100)
-            "timestamp": str      # ISO format timestamp
-        }
-    
-    Returns:
-        JSON response with success/error message and appropriate HTTP status code
+    Returnere:
+        JSON response med succes-/fejlmeddelelse og passende HTTP-statuskode
     """
     try:
         # json request fejlhåndtering hvis nu den ikke får modtaget data eller får en null fil f,eks
@@ -438,10 +431,10 @@ def api_temp_fugt():
             conn.close()
             
     except (ValueError, TypeError) as e:
-        print(f"Invalid JSON data: {e}")
+        print(f"Ugyldig JSON data: {e}")
         return jsonify({"error": "Ugyldig JSON format"}), 400
     except Exception as e:
-        print(f"Critical error in temp_fugt API: {e}")
+        print(f"Kritisk fejl i temp_fugt API: {e}")
         return jsonify({"error": "Kritisk server fejl"}), 500
 
 @app.route("/api/pir", methods=["POST"])
@@ -565,7 +558,7 @@ def api_solenoid_check():
                 return jsonify({"command": None}), 200
         
         except psycopg2.Error as e:
-            print(f"Database error in solenoid check API: {e}")
+            print(f"Database fejl i solenoid check API: {e}")
             conn.rollback()
             return jsonify({"error": "Database fejl"}), 500
         finally:
@@ -629,8 +622,8 @@ def api_door_log():
 
 # --- APPLICATION STARTUP ---
 def init_app() -> None:
-    """Initialize application with startup checks and configuration."""
-    print("Starter Health Monitoring System")
+    """Initializere applikationen med opstartstjek og konfiguration."""
+    print("Starter Mind Care overvågning System")
     
     # Test database connection at startup
     conn = get_db_connection()
