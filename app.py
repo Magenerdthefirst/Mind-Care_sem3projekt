@@ -6,12 +6,12 @@ import psycopg2
 import psycopg2.extensions
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 
-# Flask application configuration
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour session timeout
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  
 
-# --- CONSTANTS ---
+
 MAX_TEMPERATURE = 100.0
 MIN_TEMPERATURE = -50.0
 MAX_HUMIDITY = 100.0
@@ -20,20 +20,16 @@ MAX_INPUT_LENGTH = 100
 COMMAND_TIMEOUT_SECONDS = 10
 SESSION_TIMEOUT_HOURS = 1
 
-# ESP32 Window Control Thresholds (same as ESP32 code)
+
 WINDOW_TEMP_THRESHOLD = 25.0
 WINDOW_HUMIDITY_THRESHOLD = 70.0
 
 
 class DatabaseConfig:
-    """Database konfigurationsklasse for centraliseret konfigurationsstyring.
     
-    Denne klasse indkapsler alle databasekonfigurationsparametre og giver
-    et enkelt punkt for konfigurationsstyring med understøttelse af miljøvariabler.
-    """
     
     def __init__(self) -> None:
-        """Initialiser databasekonfiguration fra miljøvariabler."""
+        
         self.dbname: str = os.environ.get('DB_NAME', 'health')
         self.user: str = os.environ.get('DB_USER', 'postgres')
         self.password: str = os.environ.get('DB_PASSWORD', 'demens')
@@ -42,11 +38,7 @@ class DatabaseConfig:
         self.connect_timeout: int = int(os.environ.get('DB_TIMEOUT', '10'))
 
     def get_connection_params(self) -> Dict[str, Any]:
-        """Hent databaseforbindelsesparametre som ordbog.
         
-        Returns:
-            Dict containing database connection parameters
-        """
         return {
             'dbname': self.dbname,
             'user': self.user,
@@ -57,22 +49,15 @@ class DatabaseConfig:
         }
 
 
-# Global database configuration instance
+
 db_config = DatabaseConfig()
 
 
 def get_db_connection() -> Optional[psycopg2.extensions.connection]:
-    """Establish database connection with comprehensive error handling.
     
-    Returns:
-        Database connection object or None if connection fails.
-        
-    Raises:
-        No exceptions are raised; errors are logged and None is returned.
-    """
     try:
         conn = psycopg2.connect(**db_config.get_connection_params())
-        # Set connection to autocommit=False for explicit transaction control
+        
         conn.autocommit = False
         return conn
     except psycopg2.OperationalError as e:
@@ -87,15 +72,7 @@ def get_db_connection() -> Optional[psycopg2.extensions.connection]:
 
 
 def validate_sensor_data(temperature: Any, humidity: Any) -> Tuple[bool, str, Optional[Tuple[float, float]]]:
-    """Validate temperature and humidity sensor data.
-    
-    Args:
-        temperature: Temperature value to validate
-        humidity: Humidity value to validate
-        
-    Returns:
-        Tuple of (is_valid, error_message, validated_data)
-    """
+   
     try:
         temp_float = float(temperature)
         humidity_float = float(humidity)
@@ -113,19 +90,8 @@ def validate_sensor_data(temperature: Any, humidity: Any) -> Tuple[bool, str, Op
 
 
 def calculate_window_status(temperature: float, humidity: float) -> Dict[str, Any]:
-    """Calculate window status based on ESP32 logic.
     
-    This function uses the same logic as the ESP32 to determine if the window
-    should be open or closed based on temperature and humidity thresholds.
     
-    Args:
-        temperature: Current temperature in Celsius
-        humidity: Current humidity percentage
-        
-    Returns:
-        Dict containing window status information
-    """
-    # Same logic as ESP32: should_open = (temperature > TEMP_THRESHOLD) or (humidity > HUMIDITY_THRESHOLD)
     should_open = (temperature > WINDOW_TEMP_THRESHOLD) or (humidity > WINDOW_HUMIDITY_THRESHOLD)
     
     status = "Åben" if should_open else "Lukket"
@@ -147,19 +113,9 @@ def calculate_window_status(temperature: float, humidity: float) -> Dict[str, An
         'humidity_trigger': humidity > WINDOW_HUMIDITY_THRESHOLD
     }
 
-# --- AUTHENTICATION AND VALIDATION ---
+# --- AUTHENTICATION og godkendelse ---
 def login_required(func):
-    """Decorator to require user authentication for protected routes.
-    
-    This decorator ensures that only authenticated users can access protected
-    routes. It logs unauthorized access attempts for security monitoring.
-    
-    Args:
-        func: The route function to protect
-        
-    Returns:
-        Wrapped function that checks authentication before executing
-    """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         if "user" not in session:
@@ -170,15 +126,7 @@ def login_required(func):
 
 
 def validate_input(data: str, max_length: int = MAX_INPUT_LENGTH) -> Tuple[bool, str]:
-    """Validate user input for security and length constraints.
-    
-    Args:
-        data: Input string to validate
-        max_length: Maximum allowed length
-        
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
+   
     if not data or not data.strip():
         return False, "Input må ikke være tom"
         
@@ -196,21 +144,13 @@ def index():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """Handle user authentication with comprehensive security measures.
     
-    This function implements secure login with input validation, logging,
-    and proper error handling. It includes protection against common
-    web vulnerabilities and provides detailed security logging.
-    
-    Returns:
-        Flask Response: Rendered template or redirect response
-    """
     if request.method == "POST":
-        # henter vores username og password fra formen
+        
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         
-        # validerer vores input for password og username
+       
         username_valid, username_error = validate_input(username)
         password_valid, password_error = validate_input(password)
         
@@ -220,14 +160,14 @@ def login():
         if not password_valid:
             return render_template("login.html", error=password_error)
 
-        # prøver at få database forbindelse
+       
         conn = get_db_connection()
         if not conn:
             return render_template("login.html", error="Database forbindelsesfejl")
         
         try:
             with conn.cursor() as cur:
-                # Secure parameterized query to prevent SQL injection
+               
                 cur.execute(
                     "SELECT id, username, password FROM users WHERE username = %s", 
                     (username,)
@@ -248,7 +188,7 @@ def login():
                     else:
                         return render_template("login.html", error="Forkert brugernavn eller password")
                 else:
-                    # Generic error message to prevent username enumeration
+                    
                     return render_template("login.html", error="Forkert brugernavn eller password")
                     
         except psycopg2.Error as e:
@@ -275,11 +215,7 @@ def home():
 @app.route("/bevægelse")
 @login_required
 def bevaegelse():
-    """viser bevægelsesdetektering data fra PIR sensor.
     
-    Returnere:
-        Rendered template med bevægelsesdata
-    """
     conn = get_db_connection()
     movement_data = []
     
@@ -306,11 +242,7 @@ def bevaegelse():
 @app.route("/temperatur_fugt")
 @login_required  
 def temperatur_fugt():
-    """viser temperature and fugtighed data from sensors.
-    
-    Returnere:
-        Rendered template med miljødata
-    """
+  
     conn = get_db_connection()
     environment_data = []
     
@@ -323,7 +255,7 @@ def temperatur_fugt():
             for row in rows:
                 timestamp, temperature, humidity = row
                 
-                # vi beregner vindues status via vores esp32 logik som beregner det da det ikke gemmes på databasen
+                
                 window_info = calculate_window_status(temperature, humidity)
                 
                 environment_data.append({
@@ -345,10 +277,7 @@ def temperatur_fugt():
 @app.route("/door_control")
 @login_required
 def door_control():
-    """hoveddør bliver status set om døren er open eller lukket.
-    sammen med at den bruger comit til at sender signaler
-    som åbner og lukker vores hoveddør 
-    """
+    
     conn = get_db_connection()
     door_status = "Ukendt"
     
@@ -368,42 +297,35 @@ def door_control():
 
 @app.route("/api/temp_fugt", methods=["POST"])
 def api_temp_fugt():
-    """API endpoint for receiving temperature and fugtighed data fra ESP32 sensors.
-    
-    Dette endpoint validerer indkommende sensordata, sikrer dataintegritet,
-    og gemmer gyldige målinger i databasen med omfattende fejlhåndtering.
-    
-    Returnere:
-        JSON response med succes-/fejlmeddelelse og passende HTTP-statuskode
-    """
+   
     try:
-        # json request fejlhåndtering hvis nu den ikke får modtaget data eller får en null fil f,eks
+       
         data = request.get_json(force=True)
         
         if not data:
             return jsonify({"error": "Ingen data modtaget"}), 400
             
-        # bruger vores nødvendige områder 
+        
         temperatur = data.get("temperatur")
         fugtighed = data.get("fugtighed") 
         timestamp = data.get("timestamp")
 
-        # Validatere nødvendige felter tilstedeværelse
+        
         if temperatur is None or fugtighed is None or timestamp is None:
             return jsonify({"error": "Mangler påkrævede felter (temperatur, fugtighed, timestamp)"}), 400
         
-        # Validate sensor data using helper function
+        
         is_valid, error_msg, validated_data = validate_sensor_data(temperatur, fugtighed)
         if not is_valid:
             return jsonify({"error": error_msg}), 400
             
         temp_float, humidity_float = validated_data
         
-        # Validatere timestamp format
+        
         if not isinstance(timestamp, str) or len(timestamp.strip()) == 0:
             return jsonify({"error": "Ugyldig timestamp format"}), 400
         
-        # Database operationer med transaktionshåndtering
+        
         conn = get_db_connection()
         if not conn:
             return jsonify({"error": "Database forbindelsesfejl"}), 500
@@ -479,7 +401,7 @@ def api_pir():
         print(f"API fejl: {e}")
         return jsonify({"error": "Server fejl"}), 500
 
-# API endpoint for solenoid kontrol
+
 @app.route("/api/solenoid", methods=["POST"])
 def api_solenoid():
     try:
@@ -531,7 +453,7 @@ def api_solenoid_check():
             
         try:
             with conn.cursor() as cur:
-                # Check for recent commands within timeout window
+                
                 cur.execute("""
                     SELECT is_the_door_open, timestamp, id
                     FROM door 
@@ -544,7 +466,7 @@ def api_solenoid_check():
                 if result:
                     command = "open" if result[0] else "close"
                     
-                    # markere kommandoen som hentet ved at justere timestamp tilbage
+                    
                     cur.execute("""
                         UPDATE door 
                         SET timestamp = timestamp - INTERVAL '1 hour'
@@ -568,7 +490,7 @@ def api_solenoid_check():
         print(f"API fejl: {e}")
         return jsonify({"error": "Server fejl"}), 500
 
-# API endpoint for at logge døraktivitet
+
 @app.route("/api/door_log", methods=["POST"])
 def api_door_log():
     try:
@@ -584,7 +506,7 @@ def api_door_log():
             return jsonify({"error": "Mangler is_open eller timestamp"}), 400
         
         
-        # Normalisere boolske værdier
+        
         if isinstance(is_open, int):
             is_open = bool(is_open)
         elif isinstance(is_open, str):
@@ -622,10 +544,10 @@ def api_door_log():
 
 # --- APPLICATION STARTUP ---
 def init_app() -> None:
-    """Initializere applikationen med opstartstjek og konfiguration."""
+    
     print("Starter Mind Care overvågning System")
     
-    # Test database connection at startup
+    
     conn = get_db_connection()
     if conn:
         print("Database forbindelse succesfuld ved opstart")
