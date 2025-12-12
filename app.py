@@ -9,7 +9,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600  
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600
 
 
 MAX_TEMPERATURE = 100.0
@@ -27,9 +27,7 @@ WINDOW_HUMIDITY_THRESHOLD = 70.0
 
 class DatabaseConfig:
     
-    
     def __init__(self) -> None:
-        
         self.dbname: str = os.environ.get('DB_NAME', 'health')
         self.user: str = os.environ.get('DB_USER', 'postgres')
         self.password: str = os.environ.get('DB_PASSWORD', 'demens')
@@ -38,7 +36,6 @@ class DatabaseConfig:
         self.connect_timeout: int = int(os.environ.get('DB_TIMEOUT', '10'))
 
     def get_connection_params(self) -> Dict[str, Any]:
-        
         return {
             'dbname': self.dbname,
             'user': self.user,
@@ -49,15 +46,12 @@ class DatabaseConfig:
         }
 
 
-
 db_config = DatabaseConfig()
 
 
 def get_db_connection() -> Optional[psycopg2.extensions.connection]:
-    
     try:
         conn = psycopg2.connect(**db_config.get_connection_params())
-        
         conn.autocommit = False
         return conn
     except psycopg2.OperationalError as e:
@@ -72,7 +66,6 @@ def get_db_connection() -> Optional[psycopg2.extensions.connection]:
 
 
 def validate_sensor_data(temperature: Any, humidity: Any) -> Tuple[bool, str, Optional[Tuple[float, float]]]:
-   
     try:
         temp_float = float(temperature)
         humidity_float = float(humidity)
@@ -90,8 +83,6 @@ def validate_sensor_data(temperature: Any, humidity: Any) -> Tuple[bool, str, Op
 
 
 def calculate_window_status(temperature: float, humidity: float) -> Dict[str, Any]:
-    
-    
     should_open = (temperature > WINDOW_TEMP_THRESHOLD) or (humidity > WINDOW_HUMIDITY_THRESHOLD)
     
     status = "Åben" if should_open else "Lukket"
@@ -115,7 +106,6 @@ def calculate_window_status(temperature: float, humidity: float) -> Dict[str, An
 
 # --- AUTHENTICATION og godkendelse ---
 def login_required(func):
-
     @wraps(func)
     def wrapper(*args, **kwargs):
         if "user" not in session:
@@ -126,7 +116,6 @@ def login_required(func):
 
 
 def validate_input(data: str, max_length: int = MAX_INPUT_LENGTH) -> Tuple[bool, str]:
-   
     if not data or not data.strip():
         return False, "Input må ikke være tom"
         
@@ -135,7 +124,7 @@ def validate_input(data: str, max_length: int = MAX_INPUT_LENGTH) -> Tuple[bool,
         
     return True, ""
 
-# --- ROUTES ---
+
 @app.route("/")
 def index():
     if "user" in session:
@@ -144,13 +133,10 @@ def index():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    
     if request.method == "POST":
-        
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         
-       
         username_valid, username_error = validate_input(username)
         password_valid, password_error = validate_input(password)
         
@@ -160,14 +146,12 @@ def login():
         if not password_valid:
             return render_template("login.html", error=password_error)
 
-       
         conn = get_db_connection()
         if not conn:
             return render_template("login.html", error="Database forbindelsesfejl")
         
         try:
             with conn.cursor() as cur:
-               
                 cur.execute(
                     "SELECT id, username, password FROM users WHERE username = %s", 
                     (username,)
@@ -177,9 +161,7 @@ def login():
                 if user_record:
                     user_id, db_username, db_password = user_record
                     
-                    
                     if password == db_password:
-                       
                         session["user"] = db_username
                         session["user_id"] = user_id
                         session.permanent = True
@@ -188,7 +170,6 @@ def login():
                     else:
                         return render_template("login.html", error="Forkert brugernavn eller password")
                 else:
-                    
                     return render_template("login.html", error="Forkert brugernavn eller password")
                     
         except psycopg2.Error as e:
@@ -542,7 +523,7 @@ def api_door_log():
 
 
 
-# --- APPLICATION STARTUP ---
+# --- APPLICATIONEN STARTER OP ---
 def init_app() -> None:
     
     print("Starter Mind Care overvågning System")
