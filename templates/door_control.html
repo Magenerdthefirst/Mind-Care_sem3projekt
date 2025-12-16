@@ -165,7 +165,7 @@
             messageDiv.className = `message ${type}`;
             messageDiv.style.display = 'block';
             
-            // Skjul besked efter 5 sekunder
+            
             setTimeout(() => {
                 messageDiv.style.display = 'none';
             }, 5000);
@@ -197,7 +197,7 @@
             const openBtn = document.getElementById('openBtn');
             const closeBtn = document.getElementById('closeBtn');
             
-            // Deaktiver knapper under operation
+            
             openBtn.disabled = true;
             closeBtn.disabled = true;
             
@@ -215,7 +215,7 @@
                 if (response.ok) {
                     showMessage(data.message, 'success');
                     
-                    // Opdater status lokalt (vil blive bekræftet af ESP32 senere)
+                    
                     if (action === 'open') {
                         updateDoorStatus('open');
                     } else {
@@ -228,18 +228,18 @@
             } catch (error) {
                 showMessage(`Netværksfejl: ${error.message}`, 'error');
             } finally {
-                // Genaktiver knapper
+                
                 openBtn.disabled = false;
                 closeBtn.disabled = false;
             }
         }
         
-        // Tjek forbindelsesstatus
+        
         function updateConnectionStatus() {
             document.getElementById('connection-status').textContent = 'Forbundet til server';
         }
         
-        // Kør når siden loader
+        
         document.addEventListener('DOMContentLoaded', function() {
             updateConnectionStatus();
             updateDoorStatus('unknown');

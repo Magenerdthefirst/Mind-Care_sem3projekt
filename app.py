@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
+app.secret_key = os.environ.get('SECRET_KEY', 'Mind-Care-secret-2025')
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600
 
 
@@ -523,7 +523,6 @@ def api_door_log():
 
 
 
-# --- APPLICATIONEN STARTER OP ---
 def init_app() -> None:
     
     print("Starter Mind Care overvågning System")
